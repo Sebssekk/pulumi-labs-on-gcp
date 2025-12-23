@@ -1,0 +1,24 @@
+[Unit]
+Description=Code-Server for user %i
+After=network.target cert-setup.service
+# Key Dependency: This service MUST NOT start until cert-setup.service is successfully finished
+Requires=cert-setup.service
+
+[Service]
+User=%i
+Group=%i
+WorkingDirectory=/home/%i
+Environment="PASSWORD=-PSW-"
+
+# Start command with the port calculated by shell script
+ExecStart=/bin/bash -c '/usr/bin/code-server \
+    --auth password \
+    --cert /public/code.crt \
+    --cert-key /public/code.key \
+    --bind-addr 0.0.0.0:$((8080 + $(echo %i | sed -n "s/^user\([0-9]\{1,\}\)$/\1/p; t; i0" | head -n1)))'
+
+Restart=always
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
