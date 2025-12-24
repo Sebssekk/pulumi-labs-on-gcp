@@ -8,10 +8,10 @@ import * as fs from "node:fs"
 
 const config = new pulumi.Config();
 
-const labType: keyof typeof LabType = config.require("labType");
-const labName : string = config.require("labName")
 const region = config.get("region") || "us-central1";
 
+const labType: keyof typeof LabType = (process.env.labType || "VM") as keyof typeof LabType;
+const labName : string = process.env.labName || pulumi.getStack()
 
 let out : pulumi.Output<any> = pulumi.output({});
 
@@ -27,68 +27,83 @@ if (fs.existsSync("key.pem") && fs.existsSync("key.pub")) {
     fs.writeFileSync("key.pub", publicKey);
 }
 
+const sshKeyOut = pulumi.output({
+    'ssh-key' : privateKey
+})
+
+const osUsername: string =  process.env.osUsername || "ubuntu";
+const vmType : string = process.env.vmType || "e2-medium";
+
 switch (LabType[labType]){
-    
+
     case LabType.VM:
-        const vmNum : number = config.requireNumber("vmNum");
+        const vmNum : number = parseInt(process.env.vmNum || '1'); 
+        const userData : string = process.env.userData || '';
+        const publiclyOpenedFwPorts : string = process.env.publiclyOpenedFwPorts || "22,80,443";
+        const image : string = process.env.image || "ubuntu-2204-lts";
+        const extraMetada : string = process.env.extraMetada || "{}";
        
         const vms = VMSLab({
             labName:labName, 
-            vmType: config.get("vmType") || "e2-medium",
+            vmType: vmType,
             vmNum: vmNum, 
             vmId: "vm" , 
             public: true,
-            userData: config.get("userData") || '',
+            userData: userData,
             // TO GET USERDATA LOG
             // sudo journalctl -u google-startup-scripts.service
             region: region,
             pubKey: publicKey,
-            publiclyOpenedFwPorts : config.get("publiclyOpenedFwPorts")?.split(',') || undefined,
-            image: config.get("publiclyOpenedFwPorts") || undefined,
-            osUsername: config.get("osUsername") || undefined,
-            extraMetada: config.get("extraMetada") || undefined,
+            publiclyOpenedFwPorts : publiclyOpenedFwPorts.split(','),
+            image: image,
+            osUsername: osUsername,
+            extraMetada: JSON.parse(extraMetada),
         })
         
         out = pulumi.all([...vms]).apply(vms => 
             {
-                return vms.map((vm,i) => ({ 
-                   // 'ssh-key' : privateKey,
+                return [ ...vms.map((vm,i) => ({ 
                     [`VM${i}`] : { 
                         "name": vm.name,
                         "publicIP":vm.networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp ): []),
                         "privateIP": vm.networkInterfaces[0].networkIp
-                    }}))
+                    }})), sshKeyOut]
             }) 
         break;
 
 
     case LabType.K8S:
-        const bastion : boolean = config.getBoolean("bastion") || true;
-        const accessNum : number = config.requireNumber("accessNum");
-        const clustersNum : number = config.getNumber("clustersNum") || accessNum + 1;
-        const workersNum : number = config.getNumber("workersNum") || 1;
+        const bastion : boolean = process.env.bastion? (process.env.bastion.toLowerCase() === 'true' || process.env.bastion.toLowerCase() === "yes") : true;
+        const studentAccessNum : number = parseInt(process.env.accessNum || '0');
+        const clustersNum : number = parseInt(process.env.clustersNum || (studentAccessNum + 1).toString());
+        const workersNum : number = parseInt(process.env.workersNum || '1');
+        const clusterReady: boolean = process.env.clusterReady? (process.env.clusterReady.toLowerCase() === 'true' || process.env.clusterReady.toLowerCase() === "yes") : false;
+        const k8sVersion: string =  process.env.k8sVersion || "1.35";
+        const accessPsw: string =  process.env.accessPsw || "lab123";
+        const etcdVersion: string =  process.env.etcdVersion || "3.6.6";
+        const ciliumVersion: string =  process.env.ciliumVersion || "1.18.5";
+        
         
         const k8sVms = K8SLab({
             labName,
             bastion,
-            accessNum,
+            studentAccessNum,
             clustersNum,
             workersNum, 
             region,
             pubKey:publicKey,
             privKey: privateKey,
-            clusterReady: config.getBoolean("clusterReady") || false,
-            k8s_version: config.get("k8s_version") || "1.35",
-            accessPsw: config.get("accessPsw") || "lab123",
-            etcd_version: config.get("etcd_version") || undefined,
-            cilium_version: config.get("cilium_version") || undefined,
-            osUsername: config.get("osUsername") || undefined,
-            vmType: config.get("vmType") || undefined,
+            clusterReady,
+            k8sVersion,
+            accessPsw,
+            etcdVersion,
+            ciliumVersion,
+            osUsername,
+            vmType,
         });
 
         const accessOut = pulumi.all([...k8sVms.access ?[k8sVms.access] :[] ]).apply(vms => {
             return vms.map((vm,i) => ({ 
-               // 'ssh-key' : privateKey,
                 [`AccessVM${i}`] : { 
                     "publicIP":vm.networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp ): [])
                 }
@@ -114,7 +129,7 @@ switch (LabType[labType]){
              }))
         })
 
-        out = pulumi.all([clustersOut, bucketOut, accessOut, ])
+        out = pulumi.all([clustersOut, bucketOut, accessOut, sshKeyOut])
         
         break;
     case LabType.BIGDATA:

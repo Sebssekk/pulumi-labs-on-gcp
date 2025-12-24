@@ -9,16 +9,16 @@ import * as pulumi from "@pulumi/pulumi";
 export const K8SLab = (opts : { 
     labName : string,
     bastion: boolean,
-    accessNum: number 
+    studentAccessNum: number 
     clustersNum: number,
     workersNum: number, 
     region: string,
     privKey: string,
     pubKey: string,
     clusterReady: boolean
-    k8s_version?: string,
-    etcd_version?: string,
-    cilium_version?: string,
+    k8sVersion?: string,
+    etcdVersion?: string,
+    ciliumVersion?: string,
     accessPsw?: string,
     osUsername?: string,
     vmType?: string,
@@ -136,8 +136,8 @@ export const K8SLab = (opts : {
             LAB_NAME: opts.labName,
             CLUSTERS_NUM: opts.clustersNum,
             OS_USERNAME: opts.osUsername || "ubuntu",
-            K8S_VERSION: opts.k8s_version || "1.35",
-            ACCESS_NUM: opts.accessNum,
+            K8S_VERSION: opts.k8sVersion || "1.35",
+            ACCESS_NUM: opts.studentAccessNum,
             CLUSTER_READY: opts.clusterReady
         })
 
@@ -154,7 +154,7 @@ export const K8SLab = (opts : {
             osUsername: opts.osUsername,
             vpc: vpc,
             subnets: subnets.slice(0,1),
-            publiclyOpenedFwPorts: ["22", ...Array.from(new Array(opts.accessNum + 1)).map((_,i) => `${8080+i}` )],
+            publiclyOpenedFwPorts: ["22", ...Array.from(new Array(opts.studentAccessNum + 1)).map((_,i) => `${8080+i}` )],
             extraMetada: {
                 "enable-guest-attributes": "TRUE",
                 'config-bucket': configBucket.name
@@ -207,9 +207,9 @@ export const K8SLab = (opts : {
 
     
     const k8sCpUserData = Mustache.render(fs.readFileSync("./config/K8S/userData/k8s.sh",{encoding:"utf-8"}),{
-    K8S_VERSION: opts.k8s_version || "1.35",
-    ETCD_VERSION: opts.etcd_version || "3.6.6",
-    CILIUM_VERSION: opts.cilium_version || "1.18.3",
+    K8S_VERSION: opts.k8sVersion || "1.35",
+    ETCD_VERSION: opts.etcdVersion || "3.6.6",
+    CILIUM_VERSION: opts.ciliumVersion || "1.18.5",
     K8S_ROLE: "cp",
     CLUSTER_READY: opts.clusterReady
     })
@@ -219,9 +219,9 @@ export const K8SLab = (opts : {
         vmNum: opts.clustersNum, 
         vmId: `k8s-cp`,
         public: !opts.bastion ,
-        ...opts.bastion ? {
+        ...opts.bastion ? {} : {
             publiclyOpenedFwPorts: ["22", "6443"]
-        }:{},
+        },
         userData: k8sCpUserData,
         region: opts.region,
         pubKey: opts.pubKey,
@@ -246,9 +246,9 @@ export const K8SLab = (opts : {
             dependsOn: cp
         });
         const k8sWkUserData = Mustache.render(fs.readFileSync("./config/K8S/userData/k8s.sh",{encoding:"utf-8"}),{
-            K8S_VERSION: opts.k8s_version || "1.35",
-            ETCD_VERSION: opts.etcd_version || "3.6.6",
-            CILIUM_VERSION: opts.cilium_version || "1.18.3",
+            K8S_VERSION: opts.k8sVersion || "1.35",
+            ETCD_VERSION: opts.etcdVersion || "3.6.6",
+            CILIUM_VERSION: opts.ciliumVersion || "1.18.5",
             K8S_ROLE: "wk",
             CLUSTER_READY: opts.clusterReady
         })
@@ -258,9 +258,9 @@ export const K8SLab = (opts : {
             vmNum: opts.workersNum, 
             vmId: `k8s-${i}-wk`,
             public: !opts.bastion ,
-            ...opts.bastion ? {
+            ...opts.bastion ? {} : {
                 publiclyOpenedFwPorts: ["22"]
-            }:{},
+            },
             userData: k8sWkUserData,
             region: opts.region,
             pubKey: opts.pubKey,

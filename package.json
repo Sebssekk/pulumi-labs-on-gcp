@@ -10,6 +10,7 @@
         "@pulumi/gcp": "^9.0.0",
         "@pulumi/pulumi": "^3.113.0",
         "@types/mustache": "^4.2.6",
+        "dotenv": "^17.2.3",
         "google-auth-library": "^10.5.0",
         "micro-key-producer": "^0.8.2",
         "mustache": "^4.2.0"
