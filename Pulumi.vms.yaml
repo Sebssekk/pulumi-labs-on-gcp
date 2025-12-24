@@ -1,2 +1,9 @@
 environment:
   - GCP-based-LABS/vms
+#config:
+#  GCP-based-LABS:GCPregion: us-central1
+#  GCP-based-LABS:labType: VM
+#  GCP-based-LABS:userData: |
+#    #!/bin/bash
+#    echo hello > /tmp/hello.txt
+#  GCP-based-LABS:vmNum: 1

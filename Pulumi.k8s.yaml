@@ -1,2 +1,11 @@
 environment:
   - GCP-based-LABS/k8s
+#config:
+#  GCP-based-LABS:GCPregion: us-central1
+#  GCP-based-LABS:labType: K8S
+#  GCP-based-LABS:labName: demo
+#  GCP-based-LABS:clustersNum: 1
+#  GCP-based-LABS:workersNum: 1
+#  GCP-based-LABS:clusterReady: true
+#  GCP-based-LABS:studentAccessNum: 1
+

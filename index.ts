@@ -8,10 +8,11 @@ import * as fs from "node:fs"
 
 const config = new pulumi.Config();
 
-const region = config.get("region") || "us-central1";
+const region = process.env.GCPregion || config.get("GCPregion") || "us-central1";
 
-const labType: keyof typeof LabType = (process.env.labType || "VM") as keyof typeof LabType;
-const labName : string = process.env.labName || pulumi.getStack()
+const labType: keyof typeof LabType =  config.require("labType");
+
+const labName : string =  process.env.labName || config.get("labName") || pulumi.getStack()
 
 let out : pulumi.Output<any> = pulumi.output({});
 
@@ -31,17 +32,17 @@ const sshKeyOut = pulumi.output({
     'ssh-key' : privateKey
 })
 
-const osUsername: string =  process.env.osUsername || "ubuntu";
-const vmType : string = process.env.vmType || "e2-medium";
+const osUsername: string = process.env.osUsername || config.get("osUsername") || "ubuntu";
+const vmType : string =  process.env.vmType || config.get("vmType") || "e2-medium";
 
 switch (LabType[labType]){
 
     case LabType.VM:
-        const vmNum : number = parseInt(process.env.vmNum || '1'); 
-        const userData : string = process.env.userData || '';
-        const publiclyOpenedFwPorts : string = process.env.publiclyOpenedFwPorts || "22,80,443";
-        const image : string = process.env.image || "ubuntu-2204-lts";
-        const extraMetada : string = process.env.extraMetada || "{}";
+        const vmNum : number = parseInt(process.env.vmNum || "") || config.getNumber("vmNum") || 1 ; 
+        const userData : string = process.env.userData || config.get("userData") || '';
+        const publiclyOpenedFwPorts : number[] = process.env.publiclyOpenedFwPorts?.split(',').map(p => parseInt(p)).filter(p=>!isNaN(p)) || config.getObject("publiclyOpenedFwPorts") || [22,80,443];
+        const image : string = process.env.image || config.get("image") || "ubuntu-2204-lts";
+        const extraMetada : any = (() => { try {JSON.parse(process.env.extraMetada || '');} catch {return undefined}})() || config.getObject("extraMetada") || {};
        
         const vms = VMSLab({
             labName:labName, 
@@ -54,7 +55,7 @@ switch (LabType[labType]){
             // sudo journalctl -u google-startup-scripts.service
             region: region,
             pubKey: publicKey,
-            publiclyOpenedFwPorts : publiclyOpenedFwPorts.split(','),
+            publiclyOpenedFwPorts : publiclyOpenedFwPorts.map(p => p.toString()),
             image: image,
             osUsername: osUsername,
             extraMetada: JSON.parse(extraMetada),
@@ -73,15 +74,15 @@ switch (LabType[labType]){
 
 
     case LabType.K8S:
-        const bastion : boolean = process.env.bastion? (process.env.bastion.toLowerCase() === 'true' || process.env.bastion.toLowerCase() === "yes") : true;
-        const studentAccessNum : number = parseInt(process.env.accessNum || '0');
-        const clustersNum : number = parseInt(process.env.clustersNum || (studentAccessNum + 1).toString());
-        const workersNum : number = parseInt(process.env.workersNum || '1');
-        const clusterReady: boolean = process.env.clusterReady? (process.env.clusterReady.toLowerCase() === 'true' || process.env.clusterReady.toLowerCase() === "yes") : false;
-        const k8sVersion: string =  process.env.k8sVersion || "1.35";
-        const accessPsw: string =  process.env.accessPsw || "lab123";
-        const etcdVersion: string =  process.env.etcdVersion || "3.6.6";
-        const ciliumVersion: string =  process.env.ciliumVersion || "1.18.5";
+        const bastion : boolean = (process.env.bastion?.toLowerCase() === 'true' || process.env.bastion?.toLowerCase() === "yes") || config.getBoolean("bastion") || true;
+        const studentAccessNum : number = parseInt(process.env.studentAccessNum || '') || config.getNumber("studentAccessNum") || 0;
+        const clustersNum : number = parseInt(process.env.clustersNum || '') || config.getNumber("clustersNum") || studentAccessNum + 1;
+        const workersNum : number = parseInt(process.env.workersNum || '') || config.getNumber("workersNum") || 1;
+        const clusterReady: boolean = (process.env.clusterReady?.toLowerCase() === 'true' || process.env.clusterReady?.toLowerCase() === "yes") || config.getBoolean("clusterReady") || false;
+        const k8sVersion: string =  process.env.k8sVersion || config.get("k8sVersion") || "1.35";
+        const accessPsw: string =  process.env.accessPsw || config.get("accessPsw") || "lab123";
+        const etcdVersion: string =  process.env.etcdVersion || config.get("etcdVersion") || "3.6.6";
+        const ciliumVersion: string =  process.env.ciliumVersion || config.get("ciliumVersion") || "1.18.5";
         
         
         const k8sVms = K8SLab({
@@ -140,3 +141,5 @@ switch (LabType[labType]){
 }
 
 export const output = out;
+
+export const readme : pulumi.Output<string> = pulumi.output(fs.readFileSync(`./docs/${labType}-README.md`, "utf-8"));
