@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nodemanager
+spec:
+  serviceName: hadoop
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nodemanager
+  template:
+    metadata:
+      labels:
+        app: nodemanager
+        cluster: hadoop
+    spec:
+      containers:
+      - name: nodemanager
+        image: apache/hadoop
+        args:
+          - yarn
+          - nodemanager
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 8042
+          name: nm-web
+        envFrom:
+        - configMapRef:
+            name: hadoop-config

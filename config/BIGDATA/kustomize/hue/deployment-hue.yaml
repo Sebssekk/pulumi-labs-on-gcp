@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hue
+  template:
+    metadata:
+      labels:
+        app: hue
+    spec:
+      containers:
+      - name: hue
+        image: gethue/hue
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 8888
+          name: http
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/hue/desktop/conf/z-hue.ini
+          subPath: z-hue.ini
+        - name: hive-conf
+          mountPath: /usr/share/hue/desktop/conf/hive-site.xml
+          subPath: hive-site.xml
+      volumes:
+      - name: config
+        configMap:
+          name: hue-config
+      - name: hive-conf
+        configMap:
+          name: hive-conf

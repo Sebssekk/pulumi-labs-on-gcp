@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: regionserver
+spec:
+  serviceName: hbase
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hbase-regionserver
+  template:
+    metadata:
+      labels:
+        app: hbase-regionserver
+        cluster: hbase
+    spec:
+      initContainers:
+      - name: hadoop-init
+        image: apache/hadoop
+        securityContext:
+          runAsUser: 0
+        envFrom:
+        - configMapRef:
+            name: hadoop-config
+        args:
+          - cp 
+          - -a
+          - /opt/hadoop/.
+          - /hadoop-conf
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /hadoop-conf
+      containers:
+      - name: hbase-regionserver
+        image: sebssekk/hbase
+        env:
+          - name: COMPONENT
+            value: regionserver
+          - name: HBASE_MANAGES_ZK
+            value: "false"
+        envFrom:
+        - configMapRef:
+            name: hbase-config
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 16020
+          name: regionserver
+        - containerPort: 16030
+          name: web
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /opt/hadoop
+      volumes:
+      - name: opt-hadoop
+        emptyDir: {}

@@ -2,9 +2,11 @@ import * as pulumi from "@pulumi/pulumi";
 import { LabType } from "./types";
 import {VMSLab} from "./labs/VMStack";
 import {K8SLab} from "./labs/K8SStack";
+import { BIGDATALab } from "./labs/BIGDATAStack";
 import ssh from 'micro-key-producer/ssh.js';
 import { randomBytes } from 'micro-key-producer/utils.js';
 import * as fs from "node:fs"
+import * as Mustache from "mustache"
 
 const config = new pulumi.Config();
 
@@ -15,6 +17,7 @@ const labType: keyof typeof LabType =  config.require("labType");
 const labName : string =  process.env.labName || config.get("labName") || pulumi.getStack()
 
 let out : pulumi.Output<any> = pulumi.output({});
+let info : string = "";
 
 let privateKey: string;
 let publicKey: string;
@@ -32,9 +35,6 @@ const sshKeyOut = pulumi.output({
     'ssh-key' : privateKey
 })
 
-const osUsername: string = process.env.osUsername || config.get("osUsername") || "ubuntu";
-const vmType : string =  process.env.vmType || config.get("vmType") || "e2-medium";
-
 switch (LabType[labType]){
 
     case LabType.VM:
@@ -43,10 +43,12 @@ switch (LabType[labType]){
         const publiclyOpenedFwPorts : number[] = process.env.publiclyOpenedFwPorts?.split(',').map(p => parseInt(p)).filter(p=>!isNaN(p)) || config.getObject("publiclyOpenedFwPorts") || [22,80,443];
         const image : string = process.env.image || config.get("image") || "ubuntu-2204-lts";
         const extraMetada : any = (() => { try {JSON.parse(process.env.extraMetada || '');} catch {return undefined}})() || config.getObject("extraMetada") || {};
-       
+        const vmOsUsername: string = process.env.osUsername || config.get("osUsername") || "ubuntu";
+        const vmVmType : string =  process.env.vmType || config.get("vmType") || "e2-medium";
+        
         const vms = VMSLab({
             labName:labName, 
-            vmType: vmType,
+            vmType: vmVmType,
             vmNum: vmNum, 
             vmId: "vm" , 
             public: true,
@@ -57,7 +59,7 @@ switch (LabType[labType]){
             pubKey: publicKey,
             publiclyOpenedFwPorts : publiclyOpenedFwPorts.map(p => p.toString()),
             image: image,
-            osUsername: osUsername,
+            osUsername: vmOsUsername,
             extraMetada: JSON.parse(extraMetada),
         })
         
@@ -75,20 +77,22 @@ switch (LabType[labType]){
 
     case LabType.K8S:
         const bastion : boolean = (process.env.bastion?.toLowerCase() === 'true' || process.env.bastion?.toLowerCase() === "yes") || config.getBoolean("bastion") || true;
-        const studentAccessNum : number = parseInt(process.env.studentAccessNum || '') || config.getNumber("studentAccessNum") || 0;
-        const clustersNum : number = parseInt(process.env.clustersNum || '') || config.getNumber("clustersNum") || studentAccessNum + 1;
+        const k8sStudentAccessNum : number = parseInt(process.env.studentAccessNum || '') || config.getNumber("studentAccessNum") || 0;
+        const clustersNum : number = parseInt(process.env.clustersNum || '') || config.getNumber("clustersNum") || k8sStudentAccessNum + 1;
         const workersNum : number = parseInt(process.env.workersNum || '') || config.getNumber("workersNum") || 1;
         const clusterReady: boolean = (process.env.clusterReady?.toLowerCase() === 'true' || process.env.clusterReady?.toLowerCase() === "yes") || config.getBoolean("clusterReady") || false;
         const k8sVersion: string =  process.env.k8sVersion || config.get("k8sVersion") || "1.35";
-        const accessPsw: string =  process.env.accessPsw || config.get("accessPsw") || "lab123";
+        const k8sAccessPsw: string =  process.env.accessPsw || config.get("accessPsw") || "lab123";
         const etcdVersion: string =  process.env.etcdVersion || config.get("etcdVersion") || "3.6.6";
         const ciliumVersion: string =  process.env.ciliumVersion || config.get("ciliumVersion") || "1.18.5";
-        
+        const k8sOsUsername: string = process.env.osUsername || config.get("osUsername") || "ubuntu";
+        const k8sVmType : string =  process.env.vmType || config.get("vmType") || "e2-medium";
+        const accessVmType : string =  process.env.accessVmType || config.get("accessVmType") || "e2-standard-32"
         
         const k8sVms = K8SLab({
             labName,
             bastion,
-            studentAccessNum,
+            studentAccessNum: k8sStudentAccessNum,
             clustersNum,
             workersNum, 
             region,
@@ -96,14 +100,20 @@ switch (LabType[labType]){
             privKey: privateKey,
             clusterReady,
             k8sVersion,
-            accessPsw,
+            accessPsw: k8sAccessPsw,
             etcdVersion,
             ciliumVersion,
-            osUsername,
-            vmType,
+            osUsername: k8sOsUsername,
+            vmType: k8sVmType,
+            accessVmType,
         });
 
         const accessOut = pulumi.all([...k8sVms.access ?[k8sVms.access] :[] ]).apply(vms => {
+            info = Mustache.render(fs.readFileSync("./docs/K8S-README.md",{encoding:"utf-8"}),{
+                publicIP :vms[0].networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp ): [])[0],
+                users : Array.from(new Array(k8sStudentAccessNum + 1)).map((_,i) => ({port: 8080 +i, name: `user${i}`}))
+            })
+
             return vms.map((vm,i) => ({ 
                 [`AccessVM${i}`] : { 
                     "publicIP":vm.networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp ): [])
@@ -134,6 +144,18 @@ switch (LabType[labType]){
         
         break;
     case LabType.BIGDATA:
+        
+        const bdStudentAccessNum : number = parseInt(process.env.studentAccessNum || '') || config.getNumber("studentAccessNum") || 0;
+        const bdAccessPsw: string =  process.env.accessPsw || config.get("accessPsw") || "lab123";
+
+        const bdOutput = BIGDATALab({
+            labName,
+            region,
+            studentAccessNum: bdStudentAccessNum,
+            accessPsw: bdAccessPsw,
+        })
+
+        out = pulumi.all([bdOutput])
         break;
     default:
         throw new Error("Invalid lab type");

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hive-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hive-server
+  template:
+    metadata:
+      labels:
+        app: hive-server
+    spec:
+      initContainers:
+      - name: hadoop-init
+        image: apache/hadoop
+        securityContext:
+          runAsUser: 0
+        envFrom:
+        - configMapRef:
+            name: hadoop-config
+        args:
+          - cp 
+          - -a
+          - /opt/hadoop/etc/hadoop/.
+          - /hadoop-conf
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /hadoop-conf
+      containers:
+      - name: hive-server
+        image: apache/hive
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 10000
+          name: thrift
+        - containerPort: 10002
+          name: http
+        env:
+        - name: SERVICE_NAME
+          value: hiveserver2
+        - name: SERVICE_OPTS
+          value: "-Dhive.metastore.uris=thrift://hive-metastore:9083"
+        - name: IS_RESUME
+          value: "true"
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /opt/hadoop/etc/hadoop
+        - name: site-config
+          mountPath: /opt/hive/conf/hive-site.xml
+          subPath: hive-site.xml
+      volumes:
+      - name: opt-hadoop
+        emptyDir: {}
+      - name: site-config
+        configMap:
+          name: hive-conf

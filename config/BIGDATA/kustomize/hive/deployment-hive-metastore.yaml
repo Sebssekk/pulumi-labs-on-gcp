@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hive-metastore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hive-metastore
+  template:
+    metadata:
+      labels:
+        app: hive-metastore
+    spec:
+      initContainers:
+      - name: hadoop-init
+        image: apache/hadoop
+        securityContext:
+          runAsUser: 0
+        envFrom:
+        - configMapRef:
+            name: hadoop-config
+        args:
+          - cp 
+          - -a
+          - /opt/hadoop/etc/hadoop/.
+          - /hadoop-conf
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /hadoop-conf
+      - name: hdfs-init
+        image: apache/hadoop
+        envFrom:
+        - configMapRef:
+            name: hadoop-config
+        args:
+        - /bin/sh
+        - -c
+        - |
+          hadoop fs -mkdir -p /user/hive/warehouse && \
+          hadoop fs -mkdir -p /user/hive/warehouse/external && \
+          hadoop fs -mkdir -p /spark-logs && \
+          hadoop fs -mkdir -p /hbase && hadoop fs -chown -R hbase /hbase 
+          hadoop fs -mkdir -p /user/admin && hadoop fs -chown admin:admin /user/admin
+      containers:
+      - name: hive-metastore
+        image: apache/hive
+        command: 
+        - /bin/sh
+        - -c
+        args: 
+        - |
+          wget -O lib/postgresql-jdbc.jar https://jdbc.postgresql.org/download/postgresql-42.7.3.jar && \
+          /entrypoint.sh
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 9083
+          name: metastore
+        env:
+        - name: SERVICE_NAME
+          value: metastore
+        - name: DB_DRIVER
+          value: postgres
+        - name: SERVICE_OPTS
+          value: "-Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://pg-0.metastore:5432/metastore_db?createDatabaseIfNotExist=true -Djavax.jdo.option.ConnectionUserName=hive -Djavax.jdo.option.ConnectionPassword=password"
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /opt/hadoop/etc/hadoop
+        - name: site-config
+          mountPath: /opt/hive/conf/hive-site.xml
+          subPath: hive-site.xml
+      volumes:
+      - name: opt-hadoop
+        emptyDir: {}
+      - name: site-config
+        configMap:
+          name: hive-conf

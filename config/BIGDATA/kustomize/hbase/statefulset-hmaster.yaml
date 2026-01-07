@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hmaster
+spec:
+  serviceName: hbase
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hbase-master
+  template:
+    metadata:
+      labels:
+        app: hbase-master
+        cluster: hbase
+    spec:
+      initContainers:
+      - name: hadoop-init
+        image: apache/hadoop
+        securityContext:
+          runAsUser: 0
+        envFrom:
+        - configMapRef:
+            name: hadoop-config
+        args:
+          - cp 
+          - -a
+          - /opt/hadoop/.
+          - /hadoop-conf
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /hadoop-conf
+      containers:
+      - name: hbase-master
+        image: sebssekk/hbase
+        lifecycle:
+          postStart:
+            exec:
+              command: 
+              - /bin/bash
+              - -c
+              - |
+                  nohup hbase thrift start > thrift-server.log 2>&1  &
+                  exit 0
+        env:
+          - name: COMPONENT
+            value: master
+          - name: HBASE_MANAGES_ZK
+            value: "false"
+        envFrom:
+        - configMapRef:
+            name: hbase-config
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 16000
+          name: master
+        - containerPort: 16010
+          name: web
+        - containerPort: 9090
+          name: thrift
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /opt/hadoop
+        - name: hbase-rs
+          mountPath: /opt/hbase/conf/regionservers
+          subPath: regionservers
+      volumes:
+      - name: opt-hadoop
+        emptyDir: {}
+      - name: hbase-rs
+        configMap:
+          name: hbase-regionservers

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: worker
+spec:
+  serviceName: spark
+  replicas: 3
+  selector:
+    matchLabels:
+      role: worker
+  template:
+    metadata:
+      labels:
+        role: worker
+        app: spark
+    spec:
+      initContainers:
+      - name: hadoop-init
+        image: apache/hadoop
+        securityContext:
+          runAsUser: 0
+        envFrom:
+        - configMapRef:
+            name: hadoop-config
+        args:
+          - cp 
+          - -a
+          - /opt/hadoop/.
+          - /hadoop-conf
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /hadoop-conf
+      containers:
+      - name: spark-worker
+        image: apache/spark
+        command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker"]
+        args: ["spark://master-0.spark:7077"]
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 8081
+          name: http
+        env:
+        - name: HADOOP_HOME
+          value: /opt/hadoop
+        - name: HADOOP_CONF_DIR
+          value: /opt/hadoop/etc/hadoop
+        - name: SPARK_MODE
+          value: worker
+        - name: SPARK_WORKER_WEBUI_PORT
+          value: "8081"
+        - name: SPARK_HOME
+          value: /opt/spark
+        - name: SPARK_WORKER_CORES
+          value: "1"
+        - name: SPARK_WORKER_MEMORY
+          value: "2G"
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /opt/hadoop
+      volumes:
+      - name: opt-hadoop
+        emptyDir: {}

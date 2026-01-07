@@ -1,0 +1,23 @@
+# Patch to add tolerations and node affinity to pod templates of matching resources
+apiVersion: ignored
+kind: ignored
+metadata:
+  name: ignored
+spec:
+  template:
+    spec:
+      tolerations:
+        - key: "stack"
+          operator: "Equal"
+          value: "bigdata"
+          effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: stack
+                    operator: In
+                    values:
+                      - bigdata

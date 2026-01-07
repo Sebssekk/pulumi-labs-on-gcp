@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark
+spec:
+  clusterIP: None
+  ports:
+    - port: 7077
+      name: spark
+    - port: 8080
+      name: http-master
+    - port: 8081
+      name: http-worker
+  selector:
+    app: spark

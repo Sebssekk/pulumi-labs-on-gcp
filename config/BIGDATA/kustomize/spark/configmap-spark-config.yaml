@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-config
+data:
+  spark-env.sh: |
+    #!/usr/bin/env bash
+    export HADOOP_HOME=/opt/hadoop
+    export HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+    export SPARK_MASTER_WEBUI_PORT=8080
+    
+  spark-defaults.conf: |
+    spark.eventLog.dir              hdfs://namenode-0.hadoop:9000/spark-logs
+    spark.history.fs.logDirectory   hdfs://namenode-0.hadoop:9000/spark-logs
+    spark.master spark://master-0.spark:7077
+    spark.submit.deployMode client
+    spark.driver.memory 512m
+    spark.cores.max 1
+    spark.driver.cores 1
+    spark.deploy.defaultCores 1
+    #spark.yarn.am.memory 512m
+    spark.executor.memory 512m
+    spark.eventLog.enabled true
+    spark.history.provider org.apache.spark.deploy.history.FsHistoryProvider
+    spark.history.fs.update.interval 10s
+    spark.history.ui.port 18080
+    spark.sql.catalogImplementation hive
+    spark.sql.warehouse.dir hdfs://namenode-0.hadoop:9000/user/hive/warehouse
+  
+  workers: |
+    worker-0.spark
+    worker-1.spark
+    worker-2.spark

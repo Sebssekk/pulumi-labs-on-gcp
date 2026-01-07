@@ -1,0 +1,4 @@
+resources:
+  - configmap-hue-config.yaml
+  - service-hue.yaml
+  - deployment-hue.yaml

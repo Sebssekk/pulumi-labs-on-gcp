@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hbase-regionservers
+data:       
+  regionservers: |
+            regionserver-0.hbase
+            regionserver-1.hbase
+            regionserver-2.hbase

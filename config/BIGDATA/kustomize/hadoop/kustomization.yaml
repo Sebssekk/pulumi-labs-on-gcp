@@ -1,0 +1,7 @@
+resources:
+  - configmap-hadoop.yaml
+  - service-hadoop.yaml
+  - statefulset-namenode.yaml
+  - statefulset-datanode.yaml
+  - statefulset-resourcemanager.yaml
+  - statefulset-nodemanager.yaml

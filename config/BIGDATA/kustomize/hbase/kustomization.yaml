@@ -1,0 +1,8 @@
+resources:
+  - service-zookeeper.yaml
+  - statefulset-zoo.yaml
+  - configmap-hbase-config.yaml
+  - configmap-hbase-regionservers.yaml
+  - service-hbase.yaml
+  - statefulset-hmaster.yaml
+  - statefulset-regionserver.yaml

@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: master
+spec:
+  serviceName: spark
+  replicas: 1
+  selector:
+    matchLabels:
+      role: master
+  template:
+    metadata:
+      labels:
+        app: spark
+        role: master
+    spec:
+      initContainers:
+      - name: hadoop-init
+        image: apache/hadoop
+        securityContext:
+          runAsUser: 0
+        envFrom:
+        - configMapRef:
+            name: hadoop-config
+        args:
+          - cp 
+          - -a
+          - /opt/hadoop/.
+          - /hadoop-conf
+        volumeMounts:
+        - name: opt-hadoop
+          mountPath: /hadoop-conf
+      containers:
+      - name: spark-master
+        image: apache/spark
+        command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 7077
+          name: spark
+        - containerPort: 8080
+          name: http
+        env:
+        - name: HADOOP_HOME
+          value: /opt/hadoop
+        - name: HADOOP_CONF_DIR
+          value: /opt/hadoop/etc/hadoop
+        - name: SPARK_MASTER_WEBUI_PORT
+          value: "8080"
+        - name: SPARK_MODE
+          value: master
+        - name: SPARK_HOME
+          value: /opt/spark
+        volumeMounts:
+        - name: spark-config-env
+          mountPath: /opt/spark/conf/spark-env.sh
+          subPath: spark-env.sh
+        - name: spark-config-defaults
+          mountPath: /opt/spark/conf/spark-defaults.conf
+          subPath: spark-defaults.conf
+        - name: spark-config-workers
+          mountPath: /opt/spark/conf/workers
+          subPath: workers
+        - name: opt-hadoop
+          mountPath: /opt/hadoop
+      volumes:
+      - name: opt-hadoop
+        emptyDir: {}
+      - name: spark-config-env
+        configMap:
+          name: spark-config
+          items:
+          - key: spark-env.sh
+            path: spark-env.sh
+      - name: spark-config-defaults
+        configMap:
+          name: spark-config
+          items:
+          - key: spark-defaults.conf
+            path: spark-defaults.conf
+      - name: spark-config-workers
+        configMap:
+          name: spark-config
+          items:
+          - key: workers
+            path: workers

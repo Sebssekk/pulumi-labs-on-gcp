@@ -22,6 +22,7 @@ export const K8SLab = (opts : {
     accessPsw?: string,
     osUsername?: string,
     vmType?: string,
+    accessVmType?: string,
     vpc?: gcp.compute.Network,
     subnets? : gcp.compute.Subnetwork[],
 }) => {
@@ -143,7 +144,7 @@ export const K8SLab = (opts : {
 
         const accessVM = VMSLab({
             labName:opts.labName, 
-            vmType: "e2-standard-8",
+            vmType: opts.accessVmType || "e2-standard-32",
             vmNum: 1, 
             vmId: `bastion` , 
             public: true,

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hbase-config
+data:
+  HBASE_CONF_hbase.regionserver.thrift.http: "true"
+  HBASE_CONF_hbase.thrift.support.proxyuser: "true"
+  HBASE_CONF_hadoop.proxyuser.hbase.hosts: "*"
+  HBASE_CONF_hadoop.proxyuser.hbase.groups: "*"
+  HBASE_CONF_hbase.rootdir: hdfs://namenode-0.hadoop:9000/hbase
+  HBASE_CONF_hbase.cluster.distributed: "true"
+  HBASE_CONF_hbase.zookeeper.quorum: zoo-0.zookeeper,zoo-1.zookeeper,zoo-2.zookeeper
+  HBASE_CONF_hbase.zookeeper.property.clientPort: "2181"
+  HBASE_CONF_hbase.master: hmaster-0.hbase:16000

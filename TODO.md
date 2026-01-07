@@ -7,4 +7,4 @@
     - GW api
 
 # **BD LAB**
-... EVERYTHING ...
+- [ ] Add Kafka stack

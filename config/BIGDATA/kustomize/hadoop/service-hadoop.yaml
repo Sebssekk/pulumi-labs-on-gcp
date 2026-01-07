@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hadoop
+spec:
+  ports:
+    - port: 9000
+      name: namenode
+    - port: 9870
+      name: http-nn
+    - port: 9866
+      name: datanode
+    - port: 9864
+      name: http-dn
+    - port: 8088
+      name: rm-web
+    - port: 8032
+      name: rm
+    - port: 8042
+      name: nm-web
+  clusterIP: None
+  selector:
+    cluster: hadoop

@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hue-config
+data:
+  z-hue.ini: |
+    [desktop]
+    secret_key=kasdlfjknasdfl3hbaksk3bwkasdfkasdfba23asdf
+    http_host=0.0.0.0
+    http_port=8888
+    time_zone=Europe/Rome
+    django_debug_mode=false
+    #enable_connectors=true
+    enable_hue_5=true
+    [[database]]
+    engine=postgresql_psycopg2
+    host=pg-0.metastore
+    port=5432
+    user=hue
+    password=password
+    name=hue
+    [notebook]
+    [[interpreters]]
+    [[[postgresql]]]
+    name = PostgreSql
+    interface=sqlalchemy
+    options='{"url": "postgresql+psycopg2://hue:password@pg-0.metastore:5432/hue"}'
+    [[[hive]]]
+    name=Hive
+    interface=hiveserver2
+    options='{"url": "jdbc:hive2://hive-server:10000/default", "driver": "hive"}'
+    [hadoop]
+    [[hdfs_clusters]]
+    [[[default]]]
+    fs_defaultfs=hdfs://namenode-0.hadoop:9000
+    webhdfs_url=http://namenode-0.hadoop:9870/webhdfs/v1
+    [[yarn_clusters]]
+    [[[default]]]
+    resourcemanager_host=resourcemanager-0.hadoop
+    resourcemanager_port=8032
+    resourcemanager_api_url=http://resourcemanager-0.hadoop:8088
+    [beeswax]
+    hive_server_host=hive-server
+    hive_server_port=10000
+    hive_conf_dir=/usr/share/hue/desktop/conf
+    [hbase]
+    hbase_clusters=(Cluster|hmaster-0.hbase:9090)

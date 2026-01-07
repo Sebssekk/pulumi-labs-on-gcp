@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: resourcemanager
+spec:
+  serviceName: hadoop
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resourcemanager
+  template:
+    metadata:
+      labels:
+        app: resourcemanager
+        cluster: hadoop
+    spec:
+      containers:
+      - name: resourcemanager
+        image: apache/hadoop
+        args:
+          - yarn
+          - resourcemanager
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.2"
+          limits:
+            memory: "2.5Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 8088
+          name: rm-web
+        - containerPort: 8032
+          name: rm
+        envFrom:
+        - configMapRef:
+            name: hadoop-config

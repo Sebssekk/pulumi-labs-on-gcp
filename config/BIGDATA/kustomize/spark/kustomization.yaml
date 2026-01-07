@@ -1,0 +1,5 @@
+resources:
+  - configmap-spark-config.yaml
+  - service-spark.yaml
+  - statefulset-master.yaml
+  - statefulset-worker.yaml

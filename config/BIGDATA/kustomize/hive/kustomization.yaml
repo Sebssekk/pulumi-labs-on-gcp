@@ -1,0 +1,9 @@
+resources:
+  - configmap-pg-init-sql.yaml
+  - service-metastore.yaml
+  - statefulset-pg.yaml
+  - configmap-hive-conf.yaml
+  - service-hive-metastore.yaml
+  - deployment-hive-metastore.yaml
+  - service-hive-server.yaml
+  - deployment-hive-server.yaml

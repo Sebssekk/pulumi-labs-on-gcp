@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zoo
+spec:
+  serviceName: zookeeper
+  replicas: 3
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      initContainers:
+      - name: hadoop-init
+        image: debian
+        env:
+        - name: ZOO_MY_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['apps.kubernetes.io/pod-index']  
+        command:
+        - /bin/sh
+        - -c
+        - |
+            MY_ID=$(( $ZOO_MY_ID + 1 ))
+            echo $MY_ID > /data/myid
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      containers:
+      - name: zookeeper
+        image: zookeeper
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "0.1"
+          limits:
+            memory: "500Gi"
+            cpu: "0.5"
+        ports:
+        - containerPort: 2181
+          name: client
+        - containerPort: 2888
+          name: server
+        - containerPort: 3888
+          name: leader-election
+        env:
+        - name: ZOO_SERVERS
+          value: "server.1=zoo-0.zookeeper:2888:3888;2181 server.2=zoo-1.zookeeper:2888:3888;2181 server.3=zoo-2.zookeeper:2888:3888;2181"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        emptyDir: {}

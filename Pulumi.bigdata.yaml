@@ -1,0 +1,8 @@
+environment:
+  - GCP-based-LABS/bigdata
+#config:
+#  GCP-based-LABS:GCPregion: us-central1
+#  GCP-based-LABS:labType: BIGDATA
+#  GCP-based-LABS:labName: demo
+#  GCP-based-LABS:studentAccessNum: 1
+

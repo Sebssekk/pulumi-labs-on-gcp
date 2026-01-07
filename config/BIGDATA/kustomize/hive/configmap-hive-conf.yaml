@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hive-conf
+data:
+  hive-site.xml: |
+    <configuration>
+        <property>
+          <name>hive.metastore.uris</name>
+          <value>thrift://hive-metastore:9083</value>
+        </property>
+        <property>
+          <name>hive.metastore.warehouse.dir</name>
+          <value>hdfs://namenode-0.hadoop:9000/user/hive/warehouse</value>
+        </property>
+
+        <property>
+          <name>hive.metastore.warehouse.external.dir</name>
+          <value>hdfs://namenode-0.hadoop:9000/user/hive/warehouse/external</value>
+        </property>
+
+        <property>
+          <name>fs.defaultFS</name>
+          <value>hdfs://namenode-0.hadoop:9000</value>
+        </property>
+        <property>
+          <name>hive.server2.enable.doAs</name>
+          <value>true</value>
+        </property>
+        <property>
+          <name>hive.metastore.event.db.notification.api.auth</name>
+          <value>false</value>
+          <description>Relaxes authorization for metadata notification APIs used by Hue/Spark</description>
+        </property>
+        <property>
+          <name>hadoop.proxyuser.hive.hosts</name>
+          <value>*</value>
+        </property>
+        <property>
+          <name>hadoop.proxyuser.hive.groups</name>
+          <value>*</value>
+        </property>
+        <property>
+          <name>hive.users.in.admin.role</name>
+          <value>hive,admin</value>
+        </property>
+        <property>
+            <name>hive.txn.manager</name>
+            <value>org.apache.hadoop.hive.ql.lockmgr.DbTxnManager</value>
+        </property>
+
+        <property>
+            <name>hive.support.concurrency</name>
+            <value>true</value>
+        </property>
+
+        <property>
+            <name>hive.strict.managed.tables</name>
+            <value>true</value>
+        </property>
+
+        <property>
+            <name>hive.compactor.initiator.on</name>
+            <value>true</value>
+        </property>
+        <property>
+            <name>hive.compactor.worker.threads</name>
+            <value>1</value>
+        </property>
+    </configuration>
