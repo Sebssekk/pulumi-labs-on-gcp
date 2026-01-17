@@ -14,8 +14,10 @@ export const VMSLab = (opts : {
     subnets? : gcp.compute.Subnetwork[],
     publiclyOpenedFwPorts? : string[],
     image?: string,
+    diskSize?: number,
     osUsername?: string,
     extraMetada?: any
+    nestedVirtualization?: boolean
 }) => {
     
     const osUsername = opts.osUsername ? opts.osUsername :"ubuntu"
@@ -77,6 +79,10 @@ export const VMSLab = (opts : {
 
         vms.push( new gcp.compute.Instance(`${opts.labName}-${opts.vmId}-${i}`, {
             zone: `${opts.region}-${i % 3 ? i=== 2 ? 'a' : 'b' : 'c' }`,
+            advancedMachineFeatures: {
+                enableUefiNetworking: false,
+                enableNestedVirtualization: opts.nestedVirtualization,
+            },
             networkInterfaces: [{
                 subnetwork: subnets[i%subnets.length].id,
                 ...opts.public ? 
@@ -90,6 +96,7 @@ export const VMSLab = (opts : {
                 initializeParams: {
                     architecture: "X86_64",
                     image: image,
+                    size: opts.diskSize || 20,
                 },
             },
             metadataStartupScript: opts.userData,

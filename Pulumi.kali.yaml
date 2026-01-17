@@ -1,0 +1,72 @@
+
+config:
+  gcp:credentials: ./sa-key.json
+  gcp:project: qwiklabs-gcp-00-06cb2882f775
+  GCP-based-LABS:GCPregion: us-central1
+  GCP-based-LABS:labType: VM
+  GCP-based-LABS:vmNum: 1
+  GCP-based-LABS:vmType: n2-standard-4
+  GCP-based-LABS:image: ubuntu-2204-lts
+  GCP-based-LABS:osUsername: ubuntu
+  GCP-based-LABS:diskSize: 100
+  GCP-based-LABS:nestedVirtualization: true
+  GCP-based-LABS:publiclyOpenedFwPorts:
+  - 22
+  - 2222
+  - 5900
+  - 80
+  - 8080
+  - 3389
+  - 443
+  - 3000
+  GCP-based-LABS:userData: |
+    #!/bin/bash
+
+    FW_TCP_PORT="22 80 8080 3389 443 3000 4444" # 5900 SHOULD NOT BE FORWARDED
+    
+    apt-get update
+    echo "Port 2222" > /etc/ssh/sshd_config.d/99-port2222.conf
+    systemctl restart ssh
+    mkdir -p /tmp
+    wget https://cdimage.kali.org/kali-2025.4/kali-linux-2025.4-qemu-amd64.7z -O /tmp/kali.7z
+    apt-get install -y p7zip-full qemu-system-x86_64 qemu-utils libvirt-daemon-system virt-manager
+    mkdir -p /tmp/kali-vm 
+    7z x -o/tmp/kali-vm/ /tmp/kali.7z
+
+    QCOW2=$(ls /tmp/kali-vm/kali*.qcow2)
+    FWPORTS=''
+    for p in $FW_TCP_PORT;do FWPORTS="${FWPORTS}hostfwd=tcp::${p}-:${p},"; done;
+    FWPORTS="${FWPORTS::-1}"
+
+    sudo qemu-system-x86_64 \
+      -name "Kali-VM" \
+      -enable-kvm \
+      -cpu host \
+      -smp $(nproc) \
+      -m 12G \
+      -drive file=${QCOW2},format=qcow2 \
+      -netdev user,id=net0,$FWPORTS \
+      -device virtio-net-pci,netdev=net0 \
+      -display vnc=:0 \
+      -daemonize \
+      -serial file:/tmp/kali-vm/boot.log
+
+      echo "READY" > /tmp/READY
+      ######################## NOW MANUAL STARTUP ##################
+      ## vnc to the kali machine
+      ## log in (kali/kali)
+      ## enable ssh 
+      # sudo systemctl enable --now ssh
+      ## enable gnome rdp
+      # sudo apt install -y gnome-remote-desktop winpr3-utils kali-desktop-gnome
+      # winpr-makecert3 -silent -rdp -path ~/.local/share/gnome-remote-desktop/ rdp-tls
+      # grdctl rdp set-tls-cert ~/.local/share/gnome-remote-desktop/rdp-tls.crt
+      # grdctl rdp set-tls-key ~/.local/share/gnome-remote-desktop/rdp-tls.key
+      # grdctl rdp set-credentials "kali" "kali"
+      # grdctl rdp enable
+      # grdctl rdp disable-view-only
+      # sudo systemctl enable --now gnome-remote-desktop
+      ## kill the vm - restart the vm (same qemu command) - login via vnc 
+      ## now it's possible to use gnome-rdp
+
+    

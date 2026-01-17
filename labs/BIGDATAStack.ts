@@ -289,6 +289,13 @@ echo 'export PATH=$PATH:/opt/hbase/bin' >> $HOME/.bashrc
                     containers: [{
                         name: "code-server",
                         image: "lscr.io/linuxserver/code-server:latest",
+                        lifecycle: {
+                            postStart: {
+                                exec: {
+                                    command: ["/bootstrap.sh"]
+                                },
+                            }
+                        },
                         ports: [
                             { containerPort: 8443, name: "web" },
                             { containerPort: 4040, name: "spark-client" },

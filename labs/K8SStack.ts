@@ -144,7 +144,7 @@ export const K8SLab = (opts : {
 
         const accessVM = VMSLab({
             labName:opts.labName, 
-            vmType: opts.accessVmType || "e2-standard-32",
+            vmType: opts.accessVmType || "e2-standard-4",
             vmNum: 1, 
             vmId: `bastion` , 
             public: true,
@@ -220,9 +220,7 @@ export const K8SLab = (opts : {
         vmNum: opts.clustersNum, 
         vmId: `k8s-cp`,
         public: !opts.bastion ,
-        ...opts.bastion ? {} : {
-            publiclyOpenedFwPorts: ["22", "6443"]
-        },
+        publiclyOpenedFwPorts: opts.bastion ? [] : ["22", "6443"],
         userData: k8sCpUserData,
         region: opts.region,
         pubKey: opts.pubKey,

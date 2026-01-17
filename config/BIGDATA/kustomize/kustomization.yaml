@@ -8,6 +8,7 @@ resources:
   - spark
   - hue
   - hbase
+  - kafka
 
 # Add a label used to target the pod-spec patch for all resources
 labels:
@@ -30,6 +31,8 @@ images:
     newTag: "latest"
   - name: sebssekk/hbase
     newTag: "2.6.4"
+  - name: apache/kafka
+    newTag: "4.1.1"
 
 # Apply a single patch file to both Deployments and StatefulSets that have label stack=bigdata
 patches:

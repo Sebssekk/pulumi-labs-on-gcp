@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kowl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kowl
+  template:
+    metadata:
+      labels:
+        app: kowl
+    spec:
+      containers:
+      - name: kowl
+        image: rsmnarts/kowl
+        env:
+        - name: KAFKA_BROKERS
+          value: "broker-0.kafka:19092,broker-1.kafka:19092,broker-2.kafka:19092"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "0.2"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 8080
+          name: http
+        

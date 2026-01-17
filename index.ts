@@ -42,9 +42,11 @@ switch (LabType[labType]){
         const userData : string = process.env.userData || config.get("userData") || '';
         const publiclyOpenedFwPorts : number[] = process.env.publiclyOpenedFwPorts?.split(',').map(p => parseInt(p)).filter(p=>!isNaN(p)) || config.getObject("publiclyOpenedFwPorts") || [22,80,443];
         const image : string = process.env.image || config.get("image") || "ubuntu-2204-lts";
-        const extraMetada : any = (() => { try {JSON.parse(process.env.extraMetada || '');} catch {return undefined}})() || config.getObject("extraMetada") || {};
+        const extraMetada : any = (() => { try {JSON.parse(process.env.extraMetada || '');} catch {return undefined}})() || config.getObject("extraMetada") || "{}";
         const vmOsUsername: string = process.env.osUsername || config.get("osUsername") || "ubuntu";
         const vmVmType : string =  process.env.vmType || config.get("vmType") || "e2-medium";
+        const diskSize : number =  parseInt(process.env.diskSize || "") || config.getNumber("diskSize") || 20;
+        const nestedVirtualization : boolean =  (process.env.nestedVirtualization?.toLowerCase() === 'true' || process.env.nestedVirtualization?.toLowerCase() === "yes") || config.getBoolean("nestedVirtualization") || false;
         
         const vms = VMSLab({
             labName:labName, 
@@ -59,8 +61,10 @@ switch (LabType[labType]){
             pubKey: publicKey,
             publiclyOpenedFwPorts : publiclyOpenedFwPorts.map(p => p.toString()),
             image: image,
+            diskSize: diskSize,
             osUsername: vmOsUsername,
             extraMetada: JSON.parse(extraMetada),
+            nestedVirtualization
         })
         
         out = pulumi.all([...vms]).apply(vms => 
@@ -87,7 +91,7 @@ switch (LabType[labType]){
         const ciliumVersion: string =  process.env.ciliumVersion || config.get("ciliumVersion") || "1.18.5";
         const k8sOsUsername: string = process.env.osUsername || config.get("osUsername") || "ubuntu";
         const k8sVmType : string =  process.env.vmType || config.get("vmType") || "e2-medium";
-        const accessVmType : string =  process.env.accessVmType || config.get("accessVmType") || "e2-standard-32"
+        const accessVmType : string =  process.env.accessVmType || config.get("accessVmType") || "e2-standard-4"
         
         const k8sVms = K8SLab({
             labName,
@@ -164,4 +168,4 @@ switch (LabType[labType]){
 
 export const output = out;
 
-export const readme : pulumi.Output<string> = pulumi.output(fs.readFileSync(`./docs/${labType}-README.md`, "utf-8"));
+export const readme : pulumi.Output<string> = pulumi.output(info);
