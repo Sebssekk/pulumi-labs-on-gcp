@@ -6,6 +6,22 @@ data:
   hive-site.xml: |
     <configuration>
         <property>
+          <name>hbase.zookeeper.quorum</name>
+          <value>zoo-0.zookeeper,zoo-1.zookeeper,zoo-2.zookeeper</value> </property>
+        <property>
+          <name>hbase.zookeeper.property.clientPort</name>
+          <value>2181</value>
+        </property>
+        <property>
+            <name>tez.lib.uris</name>
+            <value>hdfs://namenode-0.hadoop:9000/apps/tez/tez.tar.gz</value>
+        </property>
+    
+        <property>
+            <name>tez.use.cluster.hadoop-libs</name>
+            <value>true</value>
+        </property>
+        <property>
           <name>hive.metastore.uris</name>
           <value>thrift://hive-metastore:9083</value>
         </property>

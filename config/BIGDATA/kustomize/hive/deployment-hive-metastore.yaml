@@ -40,6 +40,7 @@ spec:
           hadoop fs -mkdir -p /user/hive/warehouse && \
           hadoop fs -mkdir -p /user/hive/warehouse/external && \
           hadoop fs -mkdir -p /spark-logs && \
+          hadoop fs -mkdir -p /tmp && hadoop fs -chmod 777 /tmp && \
           hadoop fs -mkdir -p /hbase && hadoop fs -chown -R hbase /hbase 
           hadoop fs -mkdir -p /user/admin && hadoop fs -chown admin:admin /user/admin
       containers:
@@ -51,6 +52,8 @@ spec:
         args: 
         - |
           wget -O lib/postgresql-jdbc.jar https://jdbc.postgresql.org/download/postgresql-42.7.3.jar && \
+          cd /opt/tez && wget https://repo1.maven.org/maven2/commons-collections/commons-collections/3.2.2/commons-collections-3.2.2.jar && \
+          tar -czf /tmp/tez.tar.gz . && hadoop fs -mkdir -p /apps/tez/ && hadoop fs -put /tmp/tez.tar.gz /apps/tez/ &&\
           /entrypoint.sh
         resources:
           requests:

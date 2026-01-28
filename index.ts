@@ -17,7 +17,7 @@ const labType: keyof typeof LabType =  config.require("labType");
 const labName : string =  process.env.labName || config.get("labName") || pulumi.getStack()
 
 let out : pulumi.Output<any> = pulumi.output({});
-let info : string = "";
+let info : pulumi.Output<string> = pulumi.output("");
 
 let privateKey: string;
 let publicKey: string;
@@ -76,6 +76,13 @@ switch (LabType[labType]){
                         "privateIP": vm.networkInterfaces[0].networkIp
                     }})), sshKeyOut]
             }) 
+        info = pulumi.all([...vms]).apply(vms => {
+            return Mustache.render(fs.readFileSync("./docs/VM-README.md",{encoding:"utf-8"}),{
+                publicIPs :vms.map( vm => vm.networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp )[0]: null)),
+                user : vmOsUsername,
+                sshPrivateKey: privateKey,
+            })
+        })
         break;
 
 
@@ -113,16 +120,18 @@ switch (LabType[labType]){
         });
 
         const accessOut = pulumi.all([...k8sVms.access ?[k8sVms.access] :[] ]).apply(vms => {
-            info = Mustache.render(fs.readFileSync("./docs/K8S-README.md",{encoding:"utf-8"}),{
-                publicIP :vms[0].networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp ): [])[0],
-                users : Array.from(new Array(k8sStudentAccessNum + 1)).map((_,i) => ({port: 8080 +i, name: `user${i}`}))
-            })
-
             return vms.map((vm,i) => ({ 
                 [`AccessVM${i}`] : { 
                     "publicIP":vm.networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp ): [])
                 }
             }))
+        })
+
+        info = pulumi.all([...k8sVms.access ? [k8sVms.access] : []]).apply(vms => {
+            return Mustache.render(fs.readFileSync("./docs/K8S-README.md",{encoding:"utf-8"}),{
+                publicIP :vms[0].networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp ): [])[0],
+                users : Array.from(new Array(k8sStudentAccessNum + 1)).map((_,i) => ({port: 8080 +i, name: `user${i}`}))
+            })
         })
         const bucketOut = pulumi.all([ k8sVms["config-bucket"] ]).apply(buckets => {
             return buckets.map((b) => ({ 
@@ -160,6 +169,13 @@ switch (LabType[labType]){
         })
 
         out = pulumi.all([bdOutput])
+        // info = pulumi.all([...vms]).apply(vms => {
+        //     return Mustache.render(fs.readFileSync("./docs/VM-README.md",{encoding:"utf-8"}),{
+        //         publicIPs :vms.map( vm => vm.networkInterfaces[0].accessConfigs?.apply(ac => ac ? ac.map(ac => ac.natIp )[0]: null)),
+        //         user : vmOsUsername,
+        //         sshPrivateKey: privateKey,
+        //     })
+        // })
         break;
     default:
         throw new Error("Invalid lab type");

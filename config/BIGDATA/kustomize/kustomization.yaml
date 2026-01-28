@@ -18,7 +18,8 @@ labels:
 # Control container images centrally from this file (edit newName/newTag as needed)
 images:
   - name: apache/hadoop
-    newTag: "3.4.2"
+    newName: sebssekk/hadoop
+    newTag: 3.4.2-jdk21
   - name: postgres
     newTag: "latest"
   - name: apache/hive

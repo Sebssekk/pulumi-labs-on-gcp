@@ -28,9 +28,30 @@ spec:
         volumeMounts:
         - name: opt-hadoop
           mountPath: /hadoop-conf
+      - name: hbase-init
+        image: sebssekk/hbase
+        command:
+        - /bin/bash
+        - -c
+        args:
+        - |
+            cp /opt/hbase/lib/hbase*.jar /hbase-jar
+            cp /opt/hbase/lib/opentelemetry*.jar /hbase-jar
+            cp /opt/hbase/lib/zoo*.jar /hbase-jar
+            
+        volumeMounts:
+        - name: hbase-jar
+          mountPath: /hbase-jar
       containers:
       - name: hive-server
         image: apache/hive
+        command: 
+        - /bin/sh
+        - -c
+        args: 
+        - |
+           cp /hbase-jar/* /opt/hive/lib/
+           /entrypoint.sh
         resources:
           requests:
             memory: "1Gi"
@@ -56,8 +77,12 @@ spec:
         - name: site-config
           mountPath: /opt/hive/conf/hive-site.xml
           subPath: hive-site.xml
+        - name: hbase-jar
+          mountPath: /hbase-jar
       volumes:
       - name: opt-hadoop
+        emptyDir: {}
+      - name: hbase-jar
         emptyDir: {}
       - name: site-config
         configMap:

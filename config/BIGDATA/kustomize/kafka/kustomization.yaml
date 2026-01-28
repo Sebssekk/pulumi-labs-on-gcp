@@ -1,3 +1,4 @@
 resources:
   - statefulset-kafka.yaml
   - service-kafka.yaml
+  - deployment-kowl.yaml

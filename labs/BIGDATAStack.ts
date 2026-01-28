@@ -14,10 +14,12 @@ export const BIGDATALab = (opts : {
 // *** BIGDATA INFO ***
 // *** REMEMBER to adjust also in // check in ../config/BIGDATA/bigdata.yaml
 const JDKVersion = "21"
-const PYVersion = "3.12"
+const PYVersion = "3.10"
 const HIVEVersion = "4.2.0"
 const HADOOPVersion = "3.4.2" 
+const KAFKAVERSION = "4.1.0"
 const hiveUrl = `https://dlcdn.apache.org/hive/hive-${HIVEVersion}/apache-hive-${HIVEVersion}-bin.tar.gz`
+const kafkaUrl = `https://dlcdn.apache.org/kafka/${KAFKAVERSION}/kafka_2.13-${KAFKAVERSION}.tgz`
 const SPARKVersion = "4.1.0"
 const HBASEVersion = "2.6.4"
 /* ######################### THE GKE CLUSTER ################################### 
@@ -67,7 +69,7 @@ const HBASEVersion = "2.6.4"
         name: `${opts.labName}-access-nodepool`,
         location: `${opts.region}-a`,
         cluster: bdCluster.name,
-        nodeCount: Math.floor(opts.studentAccessNum/3) +1,
+        nodeCount: 2, //Math.floor(opts.studentAccessNum/3) +1,
         nodeConfig: {
             machineType: "e2-standard-4",
             diskSizeGb: 50,
@@ -149,29 +151,43 @@ users:
         },
         data: {
             "bootstrap.sh": `#!/bin/bash
+echo ${opts.accessPsw} | sudo -S chown -R abc:abc /config/workspace/user-data
+rm -r /config/workspace/user-data/lost+found
 echo ${opts.accessPsw} | sudo -S apt update
-echo ${opts.accessPsw} | sudo -S apt -y install python${PYVersion} python3-pip wget openjdk-${JDKVersion}-jdk 
+echo ${opts.accessPsw} | sudo -S apt -y install wget openjdk-${JDKVersion}-jdk software-properties-common
+echo ${opts.accessPsw} | sudo -S add-apt-repository ppa:deadsnakes/ppa -y
+echo ${opts.accessPsw} | sudo -S apt update
+echo ${opts.accessPsw} | sudo -S apt -y install python${PYVersion} python${PYVersion}-venv
+echo ${opts.accessPsw} | sudo -S chown -R abc:abc /config/.local/lib/python${PYVersion}/
+curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+python${PYVersion} /tmp/get-pip.py
+export PATH=$PATH:/config/.local/bin
+echo 'export PATH=$PATH:/config/.local/bin' >> /config/.bashrc
+echo ${opts.accessPsw} | sudo update-alternatives --install /usr/bin/python python /usr/bin/python${PYVersion} 3
+echo ${opts.accessPsw} | sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYVersion} 3
 code-server --install-extension ms-python.python
 code-server --install-extension ms-toolsai.jupyter
-python3 -m pip config set global.break-system-packages true
-pip install ipykernel jupyter pyspark==${SPARKVersion}
+pip install ipykernel jupyter pyspark==${SPARKVersion} --break-system-packages
 export PATH=$PATH:/opt/hadoop/bin
-echo 'export PATH=$PATH:/opt/hadoop/bin' >> $HOME/.bashrc
+echo 'export PATH=$PATH:/opt/hadoop/bin' >> /config/.bashrc
 export JAVA_HOME=/usr/lib/jvm/java-${JDKVersion}-openjdk-amd64
-echo 'export JAVA_HOME=/usr/lib/jvm/java-${JDKVersion}-openjdk-amd64' >> $HOME/.bashrc
+echo 'export JAVA_HOME=/usr/lib/jvm/java-${JDKVersion}-openjdk-amd64' >> /config/.bashrc
 cd /opt
 echo ${opts.accessPsw} | sudo -S wget ${hiveUrl}
 echo ${opts.accessPsw} | sudo -S tar -xzvf ${hiveUrl.split('/').slice(-1)[0]}
 echo ${opts.accessPsw} | sudo -S rm ${hiveUrl.split('/').slice(-1)[0]}
 echo ${opts.accessPsw} | sudo -S mv ${hiveUrl.split('/').slice(-1)[0].split('.tar')[0]} hive
 export PATH=$PATH:/opt/hive/bin
-echo 'export PATH=$PATH:/opt/hive/bin' >> $HOME/.bashrc
+echo ${opts.accessPsw} | sudo -S wget ${kafkaUrl}
+echo ${opts.accessPsw} | sudo -S tar -xzvf ${kafkaUrl.split('/').slice(-1)[0]}
+echo ${opts.accessPsw} | sudo -S rm ${kafkaUrl.split('/').slice(-1)[0]}
+echo ${opts.accessPsw} | sudo -S mv ${kafkaUrl.split('/').slice(-1)[0].split('.tgz')[0]} kafka
+echo 'export PATH=$PATH:/opt/kafka/bin' >> /config/.bashrc
 mkdir -p /config/.local/lib/python${PYVersion}/site-packages/pyspark/conf
 cp /opt/spark/conf/* /config/.local/lib/python${PYVersion}/site-packages/pyspark/conf
-export PATH=$PATH:/config/.local/bin
-echo 'export PATH=$PATH:/config/.local/bin' >> $HOME/.bashrc
+echo ${opts.accessPsw} | sudo -S chown abc:abc -R /opt/hbase/
 export PATH=$PATH:/opt/hbase/bin
-echo 'export PATH=$PATH:/opt/hbase/bin' >> $HOME/.bashrc
+echo 'export PATH=$PATH:/opt/hbase/bin' >> /config/.bashrc
 `
         }
     },{provider: k8sProvider})
@@ -227,6 +243,7 @@ echo 'export PATH=$PATH:/opt/hbase/bin' >> $HOME/.bashrc
             name: "user",
         },
         spec: {
+            podManagementPolicy: "Parallel",
             serviceName: accessService.metadata.name,
             selector: { matchLabels: {access: "user"}  },
             replicas: opts.studentAccessNum +1,
@@ -289,27 +306,26 @@ echo 'export PATH=$PATH:/opt/hbase/bin' >> $HOME/.bashrc
                     containers: [{
                         name: "code-server",
                         image: "lscr.io/linuxserver/code-server:latest",
-                        lifecycle: {
-                            postStart: {
-                                exec: {
-                                    command: ["/bootstrap.sh"]
-                                },
-                            }
-                        },
+                        // lifecycle: {
+                        //     postStart: {
+                        //         exec: {
+                        //             command: ["sudo -u abc /bootstrap.sh"]
+                        //         },
+                        //     }
+                        // },
                         ports: [
                             { containerPort: 8443, name: "web" },
                             { containerPort: 4040, name: "spark-client" },
                         ],
-                        resources: {
-                            requests: {
-                                memory: "1.5Gi",
-                                cpu: "0.25"
-                            },
-                            limits: {
-                                memory: "2Gi",
-                                cpu: "1"
-                            }
-                        },
+                        // resources: {
+                        //     requests: {
+                        //         memory: "1.5Gi",
+                        //     },
+                        //     limits: {
+                        //         memory: "2Gi",
+                        //         cpu: "1"
+                        //     }
+                        // },
                         env: [
                             {
                                 name: "PUID",
@@ -380,16 +396,15 @@ echo 'export PATH=$PATH:/opt/hbase/bin' >> $HOME/.bashrc
                                 value: "Europe/Rome",
                             },
                         ],
-                        resources: {
-                            requests: {
-                                memory: "512Mi",
-                                cpu: "0.25"
-                            },
-                            limits: {
-                                memory: "2Gi",
-                                cpu: "2"
-                            }
-                        },
+                        // resources: {
+                        //     requests: {
+                        //         memory: "512Mi",
+                        //     },
+                        //     limits: {
+                        //         memory: "2Gi",
+                        //         cpu: "2"
+                        //     }
+                        // },
                         volumeMounts: [
                             {
                                 name: "shared",
